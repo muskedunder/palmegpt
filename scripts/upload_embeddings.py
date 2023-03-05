@@ -23,16 +23,16 @@ for fpath in tqdm(fpaths, total=len(fpaths), desc="adding embeddings to faiss in
         data = json.load(open(fpath))
 
         try:
-            response = supabase.table('embeddings').select("id").eq("id", data["text_hash"]).execute()
+            response = supabase.table('documents').select("id").eq("id", data["text_hash"]).execute()
         except Exception as exc:
-            print(f"failed to check if {data['text_hash']} is already in db, moving to next doc")
+            print(f"failed to check if {data['text_hash']} is already in db, moving to next doc. Error: {exc}")
             continue
 
         if len(response.data) == 0:
 
             formated_data = {
                 "id": data["text_hash"],
-                "paragraph": data["text"],
+                "content": data["text"],
                 "embedding": data["embedding"],
                 "model_provider": "openai",
                 "model_id": "text-embedding-ada-002",
@@ -42,7 +42,7 @@ for fpath in tqdm(fpaths, total=len(fpaths), desc="adding embeddings to faiss in
             }
 
             try:
-                data, count = supabase.table('embeddings').insert(formated_data).execute()
+                data, count = supabase.table('documents').insert(formated_data).execute()
             except Exception as exc:
-                print(f"failed to upload {data['text_hash']} to db, moving to next doc")
+                print(f"failed to upload {data['text_hash']} to db, moving to next doc. Error: {exc}")
                 continue

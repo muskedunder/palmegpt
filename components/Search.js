@@ -20,7 +20,8 @@ function Search({ session }) {
                 const data = await res.json()
 
                 if (data) {
-                    setSearchResult(`user id = ${data.user_id}, n_questions_asked = ${data.n_questions_asked}, max_questions = ${data.max_questions} and the query string was ${data.search_query}`)
+                  setSearchResult(data)
+                    // setSearchResult(`user id = ${data.user_id}, n_questions_asked = ${data.n_questions_asked}, max_questions = ${data.max_questions} and the query string was ${data.search_query}`)
                 }
             } catch (error) {
                 alert('Error loading user data!')
