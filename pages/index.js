@@ -5,7 +5,7 @@ import { Auth, ThemeSupa } from '@supabase/auth-ui-react'
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react'
 
 import Search from '@/components/Search'
-import styles from '@/styles/Home.module.css'
+// import styles from '@/styles/Home.module.css'
 
 
 export default function Home() {
@@ -24,17 +24,17 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className={styles.main}>
-        <div className="container" style={{ padding: '50px 0 100px 0' }}>
+      <main>
+        <div class="flex justify-center my-20">
           {!session ? (
             <div>
-              <Typography variant="h4" className={styles.pageHeader}>Autentisera dig</Typography>
+              <Typography variant="h4">Autentisera dig</Typography>
               <Auth supabaseClient={supabase} providers={["google"]} appearance={{ theme: ThemeSupa }} theme="dark" onlyThirdPartyProviders={true} />
             </div>
           ) : (
             <div>
-              <Typography variant="h4" className={styles.pageHeader}>Ställ frågor om Palmeutredningen</Typography>
-              <Search session={session} />
+              <Typography variant="h4" class="text-4xl self-center">Ställ frågor om Palmeutredningen</Typography>
+              <Search session={session}/>
               <Button variant="outlined" onClick={signout}> {"Logga ut"} </Button>
             </div>
           )}

@@ -4,7 +4,7 @@ import Stack from '@mui/material/Stack';
 
 import SearchBox from '@/components/SearchBox';
 import SearchResult from '@/components/SearchResult';
-import styles from '@/styles/Home.module.css'
+// import styles from '@/styles/Home.module.css'
 
 
 function Search({ session }) {
@@ -45,7 +45,7 @@ function Search({ session }) {
     }
 
     return (
-        <Box className={styles.pageContent} sx={{width: 500, maxWidth: '80%'}}>
+        <Box class="my-5">
           <Stack spacing={2}>
             <SearchBox onChange={handleSearchBoxChange} onKeyUp={handleSearchKeyUp}/>
             <SearchResult searchQuery={searchQuery} searchResult={searchResult} loading={searchResultLoading}/>
