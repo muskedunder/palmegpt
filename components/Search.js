@@ -4,7 +4,6 @@ import Stack from '@mui/material/Stack';
 
 import SearchBox from '@/components/SearchBox';
 import SearchResult from '@/components/SearchResult';
-// import styles from '@/styles/Home.module.css'
 
 
 function Search({ session }) {

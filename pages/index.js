@@ -5,8 +5,6 @@ import { Auth, ThemeSupa } from '@supabase/auth-ui-react'
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react'
 
 import Search from '@/components/Search'
-// import styles from '@/styles/Home.module.css'
-
 
 export default function Home() {
   const session = useSession()
@@ -33,9 +31,9 @@ export default function Home() {
             </div>
           ) : (
             <div>
+              <Button variant="outlined" onClick={signout}> {"Logga ut"} </Button>
               <Typography variant="h4" class="text-4xl self-center">Ställ frågor om Palmeutredningen</Typography>
               <Search session={session}/>
-              <Button variant="outlined" onClick={signout}> {"Logga ut"} </Button>
             </div>
           )}
         </div>
