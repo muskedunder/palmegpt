@@ -49,14 +49,81 @@ const searchHandler = async (req, res) => {
 
 
     let { data, error } = await supabase
-    .rpc('match_documents', {
-    match_count: 3, 
-    query_embedding: embedding, 
-    similarity_threshold: 0.0
+      .rpc('match_documents', {
+        match_count: 10, 
+        query_embedding: embedding, 
+        similarity_threshold: 0.0
     })
 
-    if (error) console.error(error)
-    else console.log(data)
+    // console.log(data)
+
+    let selectedParagraphs = []
+    let currentContextLength = 0
+
+    const maxContextLength = 2500
+
+
+    for (let doc of data) {
+      currentContextLength = currentContextLength + doc.n_tokens
+      if (currentContextLength > maxContextLength) {
+        break
+      }
+      selectedParagraphs.push(doc.content)
+    }
+
+
+    const context = selectedParagraphs.join("\n\n###\n\n")
+
+    const prompt = `Besvara frågan baserat på kontexten. Beskriv hur du kommer fram till svaret.
+
+    Kontext: ${context}
+    
+    Fråga: ${question}
+    
+    Svar:
+    `
+
+    // const completion = await openai.createCompletion({
+    //   model: "text-davinci-003",
+    //   prompt: prompt,
+    //   max_tokens: 500,
+    //   temperature: 0.7,
+    //   frequency_penalty: 0,
+    //   presence_penalty: 0,
+    // });
+
+
+    let completion = "hello"
+
+
+    try {
+        completion = await openai.createChatCompletion({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {role: "system", content: "Du är en hjälpsam polisassistent som hjälper till att lösa Palmemordet baserat på utredningsmaterial."},
+          // {role: "system", content: `Utredningsmaterial att ta hänsyn till: ${context}`},
+          {role: "user", content: prompt},
+        ],
+      });
+    } catch (error) {
+      if (error.response) {
+        console.log(error.response.status);
+        console.log(error.response.data);
+      } else {
+        console.log(error.message);
+      }
+    }
+
+
+    console.log(completion.data.choices[0].message.content)
+
+
+
+    // const answer = response.choices[0].text
+    
+
+    // if (error) console.error(error)
+    // else console.log(data)
 
         
     // const { data, error } = await supabase.rpc('match_documents', {
@@ -80,8 +147,8 @@ const searchHandler = async (req, res) => {
 
 
     // res.status(200).json({ user_id: data.id, n_questions_asked: data.n_questions_asked, max_questions: data.max_questions, search_query: query.query_string})
-    res.status(200).json(data)
-
+    // res.status(200).json({ answer: completion.data.choices[0].text })
+    res.status(200).json({ answer: completion.data.choices[0].message.content })
   }
   
   export default searchHandler
