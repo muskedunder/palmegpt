@@ -6,14 +6,15 @@ import Layout from '@/components/Layout';
 
 
 export default function Home() {
-  const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [answer, setAnswer] = useState('');
+  const [query, setQuery] = useState('')
+  const [lastQuery, setLastQuery] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [answer, setAnswer] = useState('')
 
   const session = useSession()
   const supabase = useSupabaseClient()
 
-  const inputRef = useRef(null);
+  const inputRef = useRef(null)
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -25,6 +26,12 @@ export default function Home() {
       return;
     }
 
+    if (query === lastQuery) {
+      console.log("input wasn't changed")
+      return
+    }
+
+    setLastQuery(query)
     setAnswer('');
     setLoading(true);
 
@@ -78,13 +85,13 @@ export default function Home() {
           <section className="container max-w-xl mx-auto pt-4 pb-6 md:pt-8 md:pb-10 lg:pt-10 lg:pb-16">
             <div className="mx-auto flex flex-col gap-4">
               <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter text-center mb-3">
-                Chatta med Palmeutredningen
+                Ställ frågor om Palmeutredningen
               </h1>
               <div className="flex w-full max-w-xl items-center space-x-2">
                 <input
                   ref={inputRef}
                   className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent py-2 px-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-black dark:focus:ring-slate-400 dark:focus:ring-offset-slate-900"
-                  type="text"
+                  type="search"
                   placeholder="Vem mördade Olof Palme?"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
