@@ -10,6 +10,8 @@ export default function Home() {
   const [lastQuery, setLastQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [answer, setAnswer] = useState('')
+  const [numQuestionsAsked, setNumQuestionsAsked] = useState(null)
+  const [maxQuestions, setMaxQuestions] = useState(null)
 
   const session = useSession()
   const supabase = useSupabaseClient()
@@ -18,7 +20,41 @@ export default function Home() {
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+  }, [])
+
+  useEffect(() => {
+    getProfile()
+  }, [session])
+
+
+  async function getProfile() {
+
+    if (session) {
+      try {
+        setLoading(true)
+
+        let { data, error, status } = await supabase
+          .from('profiles')
+          .select(`id, n_questions_asked, max_questions`)
+          .eq('id', session.user.id)
+          .single()
+
+        if (error && status !== 406) {
+          throw error
+        }
+
+        if (data) {
+          setNumQuestionsAsked(data.n_questions_asked)
+          setMaxQuestions(data.max_questions)
+        }
+      } catch (error) {
+        alert('Error loading user data!')
+        console.log(error)
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
 
   async function handleSearch() {
     if (!query) {
@@ -57,6 +93,7 @@ export default function Home() {
 
       if (res.answer) {
         setAnswer(res.answer);
+        setNumQuestionsAsked(res.user_n_questions_asked)
       }
       setLoading(false);
     } catch (error) {
@@ -77,7 +114,7 @@ export default function Home() {
     <>
      {!session ? (
         <div>
-          <p className="text-xl font-bold text-center mb-3 mt-3"> Du behöver autentisera dig för att chatta med Palmeutredningen </p>
+          <p className="text-xl font-bold text-center mb-3 mt-3"> Du behöver autentisera dig för att ställa frågor om Palmeutredningen </p>
           <Auth supabaseClient={supabase} providers={["google"]} appearance={{ theme: ThemeSupa }} theme="dark" onlyThirdPartyProviders={true} />
         </div>
       ) : (
@@ -87,6 +124,15 @@ export default function Home() {
               <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter text-center mb-3">
                 Ställ frågor om Palmeutredningen
               </h1>
+              {numQuestionsAsked < maxQuestions ? (
+              <p className="leading-[1.1] tracking-tighter text-center mb-3">
+                Du har möjlighet att ställa totalt {maxQuestions} frågor, du har {maxQuestions - numQuestionsAsked} frågor kvar.
+              </p>
+              ): (
+                <p className="leading-[1.1] tracking-tighter text-center mb-3">
+                Du har ställt alla dina frågor.
+              </p>
+              )}
               <div className="flex w-full max-w-xl items-center space-x-2">
                 <input
                   ref={inputRef}

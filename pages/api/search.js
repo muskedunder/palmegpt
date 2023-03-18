@@ -4,13 +4,13 @@ import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs'
 const MAX_QUESTIONS_PER_USER = 10
 
 
-const getNumberOfQuestionsAsked = async (supabase, user) => {
+const getUserData = async (supabase, user) => {
   let { data, error, status } = await supabase
     .from('profiles')
     .select(`id, n_questions_asked, max_questions`)
     .eq('id', user.id)
     .single()
-    return data.n_questions_asked
+    return data
 }
 
 const incrementNumberOfQuestionsAsked = async (supabase, user, prevNumQuestionsAsked) => {
@@ -35,13 +35,13 @@ const searchHandler = async (req, res) => {
         description: 'The user does not have an active session or is not authenticated',
     })
 
-    let { data: { user } } = await supabase.auth.getUser()
+    // let { data: { user } } = await supabase.auth.getUser()
 
-    const n_questions_asked = await getNumberOfQuestionsAsked(supabase, user)
+    const userData = await getUserData(supabase, session.user)
 
-    console.log(`## n questions asked = ${n_questions_asked}`)
+    console.log(`## n questions asked = ${userData.n_questions_asked}`)
 
-    if (n_questions_asked >= MAX_QUESTIONS_PER_USER)
+    if (userData.n_questions_asked >= userData.max_questions)
       return res.status(401).json({
       error: 'question_limit',
       description: 'The user have asked the allowed number of questions',
@@ -109,11 +109,11 @@ const searchHandler = async (req, res) => {
         completion = await openai.createChatCompletion({
         model: "gpt-3.5-turbo",
         messages: [
-          {role: "system", content: "Besvara frågorna utifrån informationen som du får. Var så hjälpsam som du kan och resonera dig fram till svaret på frågan."},
+          {role: "system", content: "Besvara frågorna så gott du kan. Var så hjälpsam som du kan och resonera dig fram till svaret på frågan."},
           // {role: "system", content: `Utredningsmaterial att ta hänsyn till: ${context}`},
           {role: "user", content: prompt},
         ],
-        temperature: 0.2
+        temperature: 0.5
       });
     } catch (error) {
       if (error.response) {
@@ -136,9 +136,9 @@ const searchHandler = async (req, res) => {
     // res.status(200).json({ user_id: data.id, n_questions_asked: data.n_questions_asked, max_questions: data.max_questions, search_query: query.query_string})
     // res.status(200).json({ answer: completion.data.choices[0].text })
 
-    incrementNumberOfQuestionsAsked(supabase, user, n_questions_asked)
+    incrementNumberOfQuestionsAsked(supabase, session.user, userData.n_questions_asked)
 
-    res.status(200).json({ answer: completion.data.choices[0].message.content })
+    res.status(200).json({ answer: completion.data.choices[0].message.content, user_n_questions_asked: userData.n_questions_asked + 1})
 
     // const supabase = createServerSupabaseClient({ req, res })
 
