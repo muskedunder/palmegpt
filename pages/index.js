@@ -52,7 +52,7 @@ export default function Home() {
             </h1>
             <div className="rounded-xl border-neutral-300 border p-5 mt-4 mb-6 mx-3">
                 <p className="leading-normal text-slate-700 sm:leading-7">
-                  Ställ en fråga om palmeutredningen och PalmeGPT ger ett svar baserat på vad den kan hitta i utredningsmaterialet. PalmeGPT har tillgång till allt utredningsmaterial som finns att hitta på <a href="https://palmemordsarkivet.se" className="underline text-blue-600 hover:text-blue-800 visited:text-purple-600">palmemordsarkivet</a>.
+                  Ställ en fråga om Palmeutredningen och PalmeGPT ger ett svar baserat på vad den kan hitta i utredningsmaterialet. PalmeGPT har tillgång till allt utredningsmaterial som finns att hitta på <a href="https://palmemordsarkivet.se" className="underline text-blue-600 hover:text-blue-800 visited:text-purple-600">palmemordsarkivet</a>.
                 </p>
               </div>
             <Search session={session} numQuestionsAsked={numQuestionsAsked} maxNumQuestions={maxNumQuestions} setNumQuestionsAsked={setNumQuestionsAsked}/>
