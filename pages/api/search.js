@@ -53,6 +53,27 @@ const getDaVinciAnswer = async (openai, question, context) => {
 
 }
 
+const getPrompt = () => {
+  let prompt = null
+  if (process.env.MODEL == "chatgpt") {
+    prompt = `Information: [context]
+
+    Fråga: [question]
+
+    Svar:
+    `
+  } else if (process.env.MODEL == "davinci") {
+    prompt = `Besvara frågan baserat på kontexten. Beskriv hur du kommer fram till svaret.
+    Kontext: ${context}
+  
+    Fråga: ${question}
+  
+    Svar:
+    `
+  }
+  return prompt
+}
+
 
 const getChatGPTAnswer = async (openai, question, context) => {
   console.log("using chatgpt")
@@ -100,6 +121,28 @@ const getAnswer = async (openai, question, context) => {
 }
 
 
+const insertQuestion = async (supabase, question, embedding) => {
+    const { data, error } = await supabase
+      .from('question')
+      .upsert({ content: question, embedding: embedding, model_provider: "openai", model_id: "text-embedding-ada-002"})
+      .select()
+
+    if (error !== null) {
+      console.log(`failed to insert question into table, error : ${error}`)
+    }
+
+    return data.id
+}
+
+
+const insertAnswer = async (supabase, answer, prompt, questionId) => {
+  const { data, error } = await supabase
+    .from('answer')
+    .insert({ answer: answer, question_id: questionId, prompt: prompt, model_provider: "openai", model_id: process.env.MODEL})
+
+}
+
+
 const searchHandler = async (req, res) => {
 
     const { question } = req.body;
@@ -128,13 +171,16 @@ const searchHandler = async (req, res) => {
 
     const openai = new OpenAIApi(configuration);
 
-   // TODO: Add validation of input
+    const normalizedQuestion = question.replace(/\n/g, ' ').normalize().toLowerCase()
+
     const embeddingResponse = await openai.createEmbedding({
         model: 'text-embedding-ada-002',
-        input: question.replace(/\n/g, ' '),
+        input: normalizedQuestion,
     })
     
     const [{ embedding }] = embeddingResponse.data.data
+
+    const questionId = await insertQuestion(supabase, normalizedQuestion, embedding)
 
     let { data, error } = await supabase
       .rpc('match_documents', {
@@ -160,6 +206,8 @@ const searchHandler = async (req, res) => {
     const context = selectedParagraphs.join("\n\n###\n\n")
 
     const answer = await getAnswer(openai, question, context)
+
+    await insertAnswer(supabase, answer, getPrompt(), questionId)
 
     incrementNumberOfQuestionsAsked(supabase, session.user, userData.n_questions_asked)
 
