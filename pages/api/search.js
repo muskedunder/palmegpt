@@ -182,8 +182,6 @@ const searchHandler = async (req, res) => {
 
     const questionId = await insertQuestion(supabase, normalizedQuestion, embedding)
 
-    console.log(`question id = ${questionId}`)
-
     let { data, error } = await supabase
       .rpc('match_documents', {
         match_count: 10, 
