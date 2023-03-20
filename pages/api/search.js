@@ -84,14 +84,6 @@ const searchHandler = async (req, res) => {
 
     const context = selectedParagraphs.join("\n\n###\n\n")
 
-    const prompt = `
-    Information: ${context}
-    
-    Fråga: ${question}
-    
-    Svar:
-    `
-
     // const completion = await openai.createCompletion({
     //   model: "text-davinci-003",
     //   prompt: prompt,
@@ -104,17 +96,23 @@ const searchHandler = async (req, res) => {
 
     let completion = "hello"
 
+    const prompt = `Besvara frågan baserat på kontexten. Beskriv hur du kommer fram till svaret.
+    Kontext: ${context}
+    
+    Fråga: ${question}
+    
+    Svar:
+    `
 
     try {
-        completion = await openai.createChatCompletion({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {role: "system", content: "Besvara frågorna så gott du kan. Var så hjälpsam som du kan och resonera dig fram till svaret på frågan."},
-          // {role: "system", content: `Utredningsmaterial att ta hänsyn till: ${context}`},
-          {role: "user", content: prompt},
-        ],
-        temperature: 0.5
-      });
+      completion = await openai.createCompletion({
+        model: "text-davinci-003",
+        prompt: prompt,
+        max_tokens: 500,
+        temperature: 0.7,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+      })
     } catch (error) {
       if (error.response) {
         console.log(error.response.status);
@@ -122,7 +120,39 @@ const searchHandler = async (req, res) => {
       } else {
         console.log(error.message);
       }
-    }    
+    }
+
+
+    console.log(completion)
+
+    // let completion = "hello"
+
+    // const prompt = `
+    // Information: ${context}
+    
+    // Fråga: ${question}
+    
+    // Svar:
+    // `
+
+    // try {
+    //     completion = await openai.createChatCompletion({
+    //     model: "gpt-3.5-turbo",
+    //     messages: [
+    //       {role: "system", content: "Besvara frågorna så gott du kan. Var så hjälpsam som du kan och resonera dig fram till svaret på frågan."},
+    //       // {role: "system", content: `Utredningsmaterial att ta hänsyn till: ${context}`},
+    //       {role: "user", content: prompt},
+    //     ],
+    //     temperature: 0.5
+    //   });
+    // } catch (error) {
+    //   if (error.response) {
+    //     console.log(error.response.status);
+    //     console.log(error.response.data);
+    //   } else {
+    //     console.log(error.message);
+    //   }
+    // }
 
 
 
@@ -138,7 +168,10 @@ const searchHandler = async (req, res) => {
 
     incrementNumberOfQuestionsAsked(supabase, session.user, userData.n_questions_asked)
 
-    res.status(200).json({ answer: completion.data.choices[0].message.content, user_n_questions_asked: userData.n_questions_asked + 1})
+    // res.status(200).json({ answer: completion.data.choices[0].message.content, user_n_questions_asked: userData.n_questions_asked + 1})
+
+    res.status(200).json({ answer: completion.data.choices[0].text, user_n_questions_asked: userData.n_questions_asked + 1})
+ 
 
     // const supabase = createServerSupabaseClient({ req, res })
 
