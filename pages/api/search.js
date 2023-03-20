@@ -131,7 +131,7 @@ const insertQuestion = async (supabase, question, embedding) => {
       console.log(`failed to insert question into table, error : ${error}`)
     }
 
-    return data.id
+    return data[0].id
 }
 
 
@@ -181,6 +181,8 @@ const searchHandler = async (req, res) => {
     const [{ embedding }] = embeddingResponse.data.data
 
     const questionId = await insertQuestion(supabase, normalizedQuestion, embedding)
+
+    console.log(`question id = ${questionId}`)
 
     let { data, error } = await supabase
       .rpc('match_documents', {
