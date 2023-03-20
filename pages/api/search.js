@@ -131,7 +131,7 @@ const insertQuestion = async (supabase, question, embedding) => {
       console.log(`failed to insert question into table, error : ${error}`)
     }
 
-    return data.id
+    return data[0].id
 }
 
 
