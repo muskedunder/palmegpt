@@ -1,6 +1,7 @@
 import { Configuration, OpenAIApi } from 'openai'
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs'
 
+
 const getUserData = async (supabase, user) => {
   let { data, error, status } = await supabase
     .from('profiles')
@@ -9,6 +10,7 @@ const getUserData = async (supabase, user) => {
     .single()
     return data
 }
+
 
 const incrementNumberOfQuestionsAsked = async (supabase, user, prevNumQuestionsAsked) => {
   let { error } = await supabase
@@ -52,6 +54,7 @@ const getDaVinciAnswer = async (openai, question, context) => {
   return completion.data.choices[0].text
 
 }
+
 
 const getPrompt = () => {
   let prompt = null
@@ -109,7 +112,7 @@ const getChatGPTAnswer = async (openai, question, context) => {
 }
 
 
-const getAnswer = async (openai, question, context) => {
+const getAnswerFromContext = async (openai, question, context) => {
 
   if (process.env.MODEL === "chatgpt") {
     return await getChatGPTAnswer(openai, question, context)
@@ -118,6 +121,13 @@ const getAnswer = async (openai, question, context) => {
   } else {
     return res.status(500).json({ error: 'internal error' })
   }
+}
+
+
+const getAnswerFromEmbedding = async (openai, supabase, question, embedding) => {
+  const {context, contextIds} = await getContext(supabase, embedding)
+  const answer = await getAnswerFromContext(openai, question, context)
+  return { answer, contextIds }
 }
 
 
@@ -144,6 +154,93 @@ const insertAnswer = async (supabase, answer, prompt, questionId, contextIds) =>
     console.log(`failed to insert answer into table, error : ${error}`)
   }
 
+}
+
+
+const getExistingQuestion = async (supabase, question) => {
+  const { data, error } = await supabase
+    .from('question2')
+    .select(`id, embedding`)
+    .eq('content', question)
+    .maybeSingle()
+
+  if (error !== null) {
+    console.log(`failed to query existing question, error : ${JSON.stringify(error)}`)
+    return null
+  }
+
+  return data
+}
+
+
+const getExistingAnswer = async (supabase, questionId) => {
+  const { data, error } = await supabase
+    .from('answer2')
+    .select(`answer`)
+    .eq('question_id', questionId)
+    .maybeSingle()
+
+  if (error !== null) {
+    console.log(`failed to query existing answer, error : ${JSON.stringify(error)}`)
+    return null
+  }
+
+  return data
+}
+
+
+const getContext = async (supabase, embedding) => {
+
+  const { data, error } = await supabase
+    .rpc('match_documents', {
+      match_count: 10, 
+      query_embedding: embedding, 
+      similarity_threshold: 0.0
+  })
+
+  if (error !== null) {
+    console.log(`failed to match documents, error : ${JSON.stringify(error)}`)
+    return null
+  }
+
+  let selectedParagraphs = []
+  let selectedParagraphIds = []
+  let currentContextLength = 0
+
+  const maxContextLength = 2500
+
+  for (let doc of data) {
+    currentContextLength = currentContextLength + doc.n_tokens
+    if (currentContextLength > maxContextLength) {
+      break
+    }
+    selectedParagraphs.push(doc.content)
+    selectedParagraphIds.push(doc.id)
+  }
+
+  return { context: selectedParagraphs.join("\n\n###\n\n"), contextIds: selectedParagraphIds }
+}
+
+
+const getEmbedding = async (openai, question) => {
+  let embeddingResponse = null
+  try {
+    embeddingResponse = await openai.createEmbedding({
+      model: 'text-embedding-ada-002',
+      input: question,
+    })
+  } catch (error) {
+    if (error.response) {
+      console.log(error.response.status);
+      console.log(error.response.data);
+    } else {
+      console.log(error.message);
+    }
+  }
+
+  const [{ embedding }] = embeddingResponse.data.data
+
+  return embedding
 }
 
 
@@ -175,50 +272,39 @@ const searchHandler = async (req, res) => {
 
     const openai = new OpenAIApi(configuration);
 
+    let answerToReturn = null
+
     const normalizedQuestion = question.replace(/\n/g, ' ').normalize().toLowerCase()
 
-    const embeddingResponse = await openai.createEmbedding({
-        model: 'text-embedding-ada-002',
-        input: normalizedQuestion,
-    })
-    
-    const [{ embedding }] = embeddingResponse.data.data
-
-    const questionId = await insertQuestion(supabase, normalizedQuestion, embedding, userData.id)
-
-    let { data, error } = await supabase
-      .rpc('match_documents', {
-        match_count: 10, 
-        query_embedding: embedding, 
-        similarity_threshold: 0.0
-    })
-
-    let selectedParagraphs = []
-    let selectedParagraphIds = []
-    let currentContextLength = 0
-
-    const maxContextLength = 2500
-
-
-    for (let doc of data) {
-      currentContextLength = currentContextLength + doc.n_tokens
-      if (currentContextLength > maxContextLength) {
-        break
+    const existingQuestion = await getExistingQuestion(supabase, normalizedQuestion)
+    if (existingQuestion !== null) {
+      // console.log("found question already in db")
+      const existingAnswer = await getExistingAnswer(supabase, existingQuestion.id)
+      if (existingAnswer !== null) {
+        // console.log("found answer already in db")
+        answerToReturn = existingAnswer.answer
+      } else {
+        // console.log("did not found answer in db")
+        const { answer, contextIds } = await getAnswerFromEmbedding(openai, supabase, normalizedQuestion, existingQuestion.embedding)
+        await insertAnswer(supabase, answer, getPrompt(), existingQuestion.id, contextIds)
+        answerToReturn = answer
       }
-      selectedParagraphs.push(doc.content)
-      selectedParagraphIds.push(doc.id)
+    } else {
+      // console.log("did not find question in db")
+      const embedding = await getEmbedding(openai, normalizedQuestion)
+      const questionId = await insertQuestion(supabase, normalizedQuestion, embedding, userData.id)
+      const { answer, contextIds } = await getAnswerFromEmbedding(openai, supabase, normalizedQuestion, embedding)
+      await insertAnswer(supabase, answer, getPrompt(), questionId, contextIds)
+      answerToReturn = answer
     }
 
-    const context = selectedParagraphs.join("\n\n###\n\n")
+    if (answerToReturn !== null) {
+      incrementNumberOfQuestionsAsked(supabase, session.user, userData.n_questions_asked)
+      res.status(200).json({ answer: answerToReturn, user_n_questions_asked: userData.n_questions_asked + 1})
+    } else {
+      res.status(500).json({ error: 'internal server error' })
+    }
 
-    const answer = await getAnswer(openai, question, context)
-
-    await insertAnswer(supabase, answer, getPrompt(), questionId, selectedParagraphIds)
-
-    incrementNumberOfQuestionsAsked(supabase, session.user, userData.n_questions_asked)
-
-    res.status(200).json({ answer: answer, user_n_questions_asked: userData.n_questions_asked + 1})
- 
   }
   
   export default searchHandler

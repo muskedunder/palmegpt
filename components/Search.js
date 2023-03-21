@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import ErrorMessage from '@/components/ErrorMessage'
 import NumberOfQuestions from '@/components/NumberOfQuestions'
 import SearchBox from '@/components/SearchBox';
 import SearchResult from '@/components/SearchResult';
@@ -10,6 +11,7 @@ function Search({ session, numQuestionsAsked, maxNumQuestions, setNumQuestionsAs
   const [lastQuery, setLastQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [answer, setAnswer] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
 
   async function handleSearch() {
 
@@ -23,8 +25,8 @@ function Search({ session, numQuestionsAsked, maxNumQuestions, setNumQuestionsAs
         return
       }
 
-      setLastQuery(query)
       setAnswer('')
+      setErrorMessage('')
       setLoading(true)
 
       const question = query.trim()
@@ -41,6 +43,7 @@ function Search({ session, numQuestionsAsked, maxNumQuestions, setNumQuestionsAs
         })
 
         if (!response.ok) {
+          setErrorMessage('Något gick fel, prova igen')
           setLoading(false)
           throw new Error(response.statusText)
         }
@@ -50,6 +53,7 @@ function Search({ session, numQuestionsAsked, maxNumQuestions, setNumQuestionsAs
         if (res.answer) {
           setAnswer(res.answer)
           setNumQuestionsAsked(res.user_n_questions_asked)
+          setLastQuery(query)
         }
         setLoading(false)
       } catch (error) {
@@ -67,7 +71,11 @@ function Search({ session, numQuestionsAsked, maxNumQuestions, setNumQuestionsAs
     <>
       <NumberOfQuestions numQuestionsAsked={numQuestionsAsked} maxNumQuestions={maxNumQuestions}/>
       <SearchBox query={query} setQuery={setQuery} handleSearch={handleSearch}/>
-      <SearchResult session={session} answer={answer} loading={loading}/>
+      {errorMessage === "" ? (
+        <SearchResult session={session} answer={answer} loading={loading}/>
+      ) : (
+        <ErrorMessage errorMessage={errorMessage}/>
+      )}
     </>
   )
 }
