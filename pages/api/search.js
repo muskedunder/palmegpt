@@ -121,10 +121,10 @@ const getAnswer = async (openai, question, context) => {
 }
 
 
-const insertQuestion = async (supabase, question, embedding) => {
+const insertQuestion = async (supabase, question, embedding, userId) => {
     const { data, error } = await supabase
-      .from('question')
-      .upsert({ content: question, embedding: embedding, model_provider: "openai", model_id: "text-embedding-ada-002"})
+      .from('question2')
+      .upsert({ content: question, embedding: embedding, user_id: userId, model_provider: "openai", model_id: "text-embedding-ada-002"})
       .select()
 
     if (error !== null) {
@@ -135,10 +135,14 @@ const insertQuestion = async (supabase, question, embedding) => {
 }
 
 
-const insertAnswer = async (supabase, answer, prompt, questionId) => {
+const insertAnswer = async (supabase, answer, prompt, questionId, contextIds) => {
   const { data, error } = await supabase
-    .from('answer')
-    .insert({ answer: answer, question_id: questionId, prompt: prompt, model_provider: "openai", model_id: process.env.MODEL})
+    .from('answer2')
+    .insert({ answer: answer, question_id: questionId, prompt: prompt, context_ids: contextIds, dataset_version: process.env.DATASET_VERSION, model_provider: "openai", model_id: process.env.MODEL})
+
+  if (error !== null) {
+    console.log(`failed to insert answer into table, error : ${error}`)
+  }
 
 }
 
@@ -180,7 +184,7 @@ const searchHandler = async (req, res) => {
     
     const [{ embedding }] = embeddingResponse.data.data
 
-    const questionId = await insertQuestion(supabase, normalizedQuestion, embedding)
+    const questionId = await insertQuestion(supabase, normalizedQuestion, embedding, userData.id)
 
     let { data, error } = await supabase
       .rpc('match_documents', {
@@ -190,6 +194,7 @@ const searchHandler = async (req, res) => {
     })
 
     let selectedParagraphs = []
+    let selectedParagraphIds = []
     let currentContextLength = 0
 
     const maxContextLength = 2500
@@ -201,13 +206,14 @@ const searchHandler = async (req, res) => {
         break
       }
       selectedParagraphs.push(doc.content)
+      selectedParagraphIds.push(doc.id)
     }
 
     const context = selectedParagraphs.join("\n\n###\n\n")
 
     const answer = await getAnswer(openai, question, context)
 
-    await insertAnswer(supabase, answer, getPrompt(), questionId)
+    await insertAnswer(supabase, answer, getPrompt(), questionId, selectedParagraphIds)
 
     incrementNumberOfQuestionsAsked(supabase, session.user, userData.n_questions_asked)
 
