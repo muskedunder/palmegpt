@@ -99,12 +99,17 @@ const getChatGPTAnswer = async (openai, question, context) => {
       temperature: 0.5
     })
   } catch (error) {
+    console.log("Error fetching chat completion")
     if (error.response) {
       console.log(error.response.status);
       console.log(error.response.data);
     } else {
       console.log(error.message);
     }
+  }
+
+  if (completion.status !== 200) {
+    console.log(`got status code ${completion.status} when fetching chat completion`)
   }
 
   return completion.data.choices[0].message.content
