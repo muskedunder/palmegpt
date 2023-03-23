@@ -8,7 +8,7 @@ export default function Authenticate() {
     return (
         <div>
           <p className="text-xl font-bold text-center mb-3 mt-3"> Du behöver logga in för att kunna ställa frågor om Palmeutredningen </p>
-          <Auth supabaseClient={supabase} providers={["google"]} appearance={{ theme: ThemeSupa }} theme="dark" onlyThirdPartyProviders={true} />
+          <Auth supabaseClient={supabase} providers={["facebook", "google"]} appearance={{ theme: ThemeSupa }} theme="dark" onlyThirdPartyProviders={true} />
         </div>
     )
 }
